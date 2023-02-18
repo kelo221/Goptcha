@@ -1,4 +1,4 @@
-package main
+package Goptcha
 
 import (
 	"golang.org/x/image/draw"
@@ -14,23 +14,58 @@ import (
 	"os"
 )
 
+// characterWidth is the width of default font characters in pixels.
 const characterWidth = 7
+
+// characterHeight is the height of default font characters in pixels.
 const characterHeight = 13
-const characterCount = 8
 
-const imageSizeMultiplier = 4
+type Config struct {
+	CharacterCount      int
+	ImageSizeMultiplier int
+	imageWidth          int
+	imageHeight         int
+	CharSet             string
+	Opacity             uint8
+}
 
-const imageWidth = characterCount*characterWidth + 1
-const imageHeight = characterHeight + 44
+var cDefs = Config{
+	CharacterCount:      8,
+	ImageSizeMultiplier: 4,
+	imageWidth:          8*characterWidth + 1,
+	imageHeight:         characterHeight + 44,
+	CharSet:             "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+	Opacity:             100,
+}
 
-func generateCaptcha() (string, *image.Gray) {
+// Configure modifies default captcha generation settings. (OPTIONAL)
+func Configure(config *Config) {
+
+	if config.ImageSizeMultiplier == 0 {
+		log.Fatal("Image size multiplier cannot be 0")
+	}
+
+	if config.CharSet == "" {
+		log.Fatal("You must specify at least one character.")
+	} else {
+		cDefs.CharacterCount = config.CharacterCount
+		cDefs.CharSet = config.CharSet
+		cDefs.imageWidth = config.CharacterCount*characterWidth + 1
+	}
+
+	cDefs.Opacity = config.Opacity
+
+}
+
+func GenerateCaptcha() (string, *image.Gray) {
 
 	drawer, img := createImage()
-	generatedString := generateRandomString(characterCount)
+	generatedString := generateRandomString(cDefs.CharacterCount)
 	drawer.DrawString(generatedString)
 
 	img = resizeImage(img)
 	img = distortImage(img)
+
 	img = addNoise(img)
 
 	return generatedString, img
@@ -44,6 +79,7 @@ func addNoise(img *image.Gray) *image.Gray {
 			img.Set(x, y, color.Gray{Y: imageArray[y][x] + uint8(rand.Intn(255-0)+0)/2})
 		}
 	}
+
 	return img
 }
 
@@ -53,7 +89,7 @@ func distortImage(src *image.Gray) *image.Gray {
 	var sineCollection []float64
 
 	// generateCaptcha height modifier for each column
-	for i := 0.1; i < imageHeight*imageSizeMultiplier*20; i += .05 {
+	for i := 0.1; i < float64(cDefs.imageHeight*cDefs.ImageSizeMultiplier)*20; i += .05 {
 		sineCollection = append(sineCollection, math.Sin(i*sineModifier))
 	}
 
@@ -65,7 +101,9 @@ func distortImage(src *image.Gray) *image.Gray {
 			if imageArray[y][x] != 255 {
 				src.Set(x, y, color.Gray{Y: 255})
 				arrayMod := int(math.Round(modifierRange*sineCollection[x])) + int(modifierRange)
-				src.Set(x, (((arrayMod+imageHeight*imageSizeMultiplier)+y)/2)-(rand.Intn((2*imageSizeMultiplier/2)-0)+0)-imageHeight/2, color.Gray{Y: 100})
+				src.Set(x,
+					(((arrayMod+cDefs.imageHeight*cDefs.ImageSizeMultiplier)+y)/2)-(rand.Intn(2*cDefs.ImageSizeMultiplier/2))-cDefs.imageHeight/2,
+					color.Gray{Y: cDefs.Opacity})
 			}
 
 		}
@@ -75,14 +113,14 @@ func distortImage(src *image.Gray) *image.Gray {
 }
 
 func resizeImage(src image.Image) *image.Gray {
-	dst := image.NewGray(image.Rect(0, 0, imageWidth*imageSizeMultiplier, imageHeight*imageSizeMultiplier))
+	dst := image.NewGray(image.Rect(0, 0, cDefs.imageWidth*cDefs.ImageSizeMultiplier, cDefs.imageHeight*cDefs.ImageSizeMultiplier))
 	draw.NearestNeighbor.Scale(dst, dst.Rect, src, src.Bounds(), draw.Over, nil)
 	return dst
 }
 
 func createImage() (*font.Drawer, *image.Gray) {
 
-	img := image.NewGray(image.Rect(0, 0, imageWidth, imageHeight))
+	img := image.NewGray(image.Rect(0, 0, cDefs.imageWidth, cDefs.imageHeight))
 	draw.Draw(img, img.Bounds(), image.White, image.Point{}, draw.Src)
 
 	face := basicfont.Face7x13
@@ -98,11 +136,10 @@ func createImage() (*font.Drawer, *image.Gray) {
 
 func generateRandomString(captchaLength int) string {
 
-	characterSet := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	var charArray = make([]uint8, captchaLength)
 
 	for i := 0; i < captchaLength; i++ {
-		charArray[i] = characterSet[rand.Intn(len(characterSet))]
+		charArray[i] = cDefs.CharSet[rand.Intn(len(cDefs.CharSet))]
 	}
 	captchaCharacters := string(charArray[:])
 
