@@ -12,6 +12,19 @@
 ## Example using Fiber
 
 ```go
+package main
+
+import (
+	"Goptcha/Goptcha"
+	"bytes"
+	"fmt"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/session"
+	"image/png"
+	"log"
+	"net/http"
+	"time"
+)
 
 var capchaStore *session.Store
 
@@ -19,12 +32,19 @@ func main() {
 
 	app := fiber.New()
 
-		capchaStore = session.New(session.Config{
-			Expiration:     time.Minute * 1,
-			CookieSecure:   true,
-			CookieHTTPOnly: true,
-		})
-	
+	capchaStore = session.New(session.Config{
+		Expiration:     time.Minute * 1,
+		CookieSecure:   true,
+		CookieHTTPOnly: true,
+	})
+
+	Goptcha.Configure(&Goptcha.Config{
+		ImageSizeMultiplier: 4,
+		CharSet:             "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+		CharacterCount:      8,
+		Opacity:             100,
+	})
+
 	app.Get("/captcha", getCaptcha)
 	app.Post("/checker", restricted)
 
@@ -37,7 +57,9 @@ func main() {
 
 func getCaptcha(c *fiber.Ctx) error {
 
-	captchaString, img := generateCaptcha()
+	captchaString, img := Goptcha.GenerateCaptcha()
+
+	fmt.Println(captchaString)
 
 	sess, err := capchaStore.Get(c)
 	if err != nil {
@@ -90,6 +112,8 @@ func restricted(c *fiber.Ctx) error {
 	}
 
 	captcha := sess.Get("captcha")
+
+	log.Println(captcha, data["captcha"])
 
 	if captcha != data["captcha"] {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Incorrect captcha!"})
