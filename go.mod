@@ -1,4 +1,4 @@
-module github.com/kelo221/Goptcha
+module github.com/kelo221/goptcha
 
 go 1.20
 
