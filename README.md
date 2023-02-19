@@ -15,7 +15,7 @@
 package main
 
 import (
-	"Goptcha/Goptcha"
+	"github.com/kelo221/Goptcha"
 	"bytes"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
