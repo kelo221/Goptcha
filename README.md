@@ -1,6 +1,6 @@
 # Goptcha
 
-### A proof of consept captcha solution done in Golang.
+### A proof of concept captcha solution done in Golang.
 
 <img src="https://user-images.githubusercontent.com/61495413/219882869-114165e9-f1fb-4486-90e2-871c1e3c2bb4.png" width="256" height="256" />
 
