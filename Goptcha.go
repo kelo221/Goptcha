@@ -1,4 +1,4 @@
-package Goptcha
+package goptcha
 
 import (
 	"golang.org/x/image/draw"
