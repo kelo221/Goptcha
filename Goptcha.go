@@ -27,15 +27,17 @@ type Config struct {
 	imageHeight         int
 	CharSet             string
 	Opacity             uint8
+	NoiseModifier       uint8
 }
 
 var cDefs = Config{
 	CharacterCount:      8,
 	ImageSizeMultiplier: 4,
 	imageWidth:          8*characterWidth + 1,
-	imageHeight:         characterHeight + 44,
+	imageHeight:         characterHeight + 22,
 	CharSet:             "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
 	Opacity:             100,
+	NoiseModifier:       10,
 }
 
 // Configure modifies default captcha generation settings. (OPTIONAL)
@@ -72,11 +74,14 @@ func GenerateCaptcha() (string, *image.Gray) {
 }
 
 func addNoise(img *image.Gray) *image.Gray {
-	imageArray := imageToArray(img)
+	bounds := img.Bounds()
+	width, height := bounds.Max.X, bounds.Max.Y
 
-	for y, h := range imageArray {
-		for x := range h {
-			img.Set(x, y, color.Gray{Y: imageArray[y][x] + uint8(rand.Intn(255-0)+0)/2})
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			currentColor := img.GrayAt(x, y).Y
+			noiseValue := uint8(rand.Intn(255)) / 2
+			img.SetGray(x, y, color.Gray{Y: currentColor + noiseValue})
 		}
 	}
 
@@ -84,28 +89,25 @@ func addNoise(img *image.Gray) *image.Gray {
 }
 
 func distortImage(src *image.Gray) *image.Gray {
-
-	sineModifier := 0.1 + rand.Float64()*(.9-0.1)
+	sineModifier := 0.1 + rand.Float64()*(.32-0.1)
 	var sineCollection []float64
 
-	// generateCaptcha height modifier for each column
+	// generate height modifier for each column
 	for i := 0.1; i < float64(cDefs.imageHeight*cDefs.ImageSizeMultiplier)*20; i += .05 {
 		sineCollection = append(sineCollection, math.Sin(i*sineModifier))
 	}
 
 	imageArray := imageToArray(src)
-	modifierRange := 20.0
+	modifierRange := 35.0
 
 	for y, h := range imageArray {
 		for x := range h {
 			if imageArray[y][x] != 255 {
 				src.Set(x, y, color.Gray{Y: 255})
 				arrayMod := int(math.Round(modifierRange*sineCollection[x])) + int(modifierRange)
-				src.Set(x,
-					(((arrayMod+cDefs.imageHeight*cDefs.ImageSizeMultiplier)+y)/2)-(rand.Intn(2*cDefs.ImageSizeMultiplier/2))-cDefs.imageHeight/2,
-					color.Gray{Y: cDefs.Opacity})
+				newY := y + arrayMod - cDefs.ImageSizeMultiplier*cDefs.imageHeight/2
+				src.Set(x, newY, color.Gray{Y: cDefs.Opacity})
 			}
-
 		}
 	}
 
@@ -128,7 +130,7 @@ func createImage() (*font.Drawer, *image.Gray) {
 		Dst:  img,
 		Src:  image.Black,
 		Face: face,
-		Dot:  fixed.Point26_6{X: characterWidth * 9, Y: characterHeight * 160},
+		Dot:  fixed.Point26_6{X: characterWidth * 9, Y: fixed.Int26_6(characterHeight * cDefs.imageHeight * 3)},
 	}
 
 	return drawer, img
@@ -146,7 +148,7 @@ func generateRandomString(captchaLength int) string {
 	return captchaCharacters
 }
 
-func saveImage(img image.Gray) {
+func SaveImage(img image.Gray) {
 	f, err := os.Create("hello.png")
 	if err != nil {
 		log.Fatalf("Failed to create file: %v", err)
@@ -155,6 +157,10 @@ func saveImage(img image.Gray) {
 	if err != nil {
 		log.Fatalf("Failed to encode image: %v", err)
 	}
+}
+
+func grayToUint8(r uint32, g uint32, b uint32, a uint32) uint8 {
+	return uint8((r + g + b) / 3)
 }
 
 func imageToArray(img *image.Gray) [][]uint8 {
@@ -172,8 +178,4 @@ func imageToArray(img *image.Gray) [][]uint8 {
 	}
 
 	return pixels
-}
-
-func grayToUint8(r uint32, g uint32, b uint32, a uint32) uint8 {
-	return uint8((r + g + b) / 3)
 }
