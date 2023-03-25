@@ -15,11 +15,11 @@
 package main
 
 import (
-	"github.com/kelo221/goptcha"
 	"bytes"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/session"
+	"github.com/kelo221/goptcha"
 	"image/png"
 	"log"
 	"net/http"
@@ -121,6 +121,7 @@ func restricted(c *fiber.Ctx) error {
 
 	return c.Status(http.StatusOK).JSON(fiber.Map{"Success": "Correct captcha!"})
 }
+
 
 ```
 Here localhost:3000/captcha returns an randomly generated image, which contains text that is passed to the localhost:3000/checker endpoint for verification.
